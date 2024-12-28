@@ -16,6 +16,7 @@ import pytest
 from shapely.geometry import Polygon
 
 import pypsa
+from pypsa.constants import DEFAULT_EPSG
 
 
 def pytest_addoption(parser):
@@ -77,7 +78,7 @@ def ac_dc_network_r():
 
 
 @pytest.fixture(scope="module")
-def ac_dc_network_multiindexed(ac_dc_network):
+def ac_dc_network_mi(ac_dc_network):
     n = ac_dc_network
     n.snapshots = pd.MultiIndex.from_product([[2013], n.snapshots])
     n.investment_periods = [2013]
@@ -105,7 +106,7 @@ def ac_dc_network_shapes(ac_dc_network):
     bboxes = n.buses.apply(lambda row: create_bbox(row["x"], row["y"]), axis=1)
 
     # Convert to GeoSeries
-    geo_series = gpd.GeoSeries(bboxes, crs="epsg:4326")
+    geo_series = gpd.GeoSeries(bboxes, crs=DEFAULT_EPSG)
 
     n.add(
         "Shape",
@@ -134,14 +135,14 @@ def storage_hvdc_network():
 def all_networks(
     ac_dc_network,
     ac_dc_network_r,
-    ac_dc_network_multiindexed,
+    ac_dc_network_mi,
     ac_dc_network_shapes,
     storage_hvdc_network,
 ):
     return [
         ac_dc_network,
         ac_dc_network_r,
-        ac_dc_network_multiindexed,
+        ac_dc_network_mi,
         ac_dc_network_shapes,
         storage_hvdc_network,
     ]

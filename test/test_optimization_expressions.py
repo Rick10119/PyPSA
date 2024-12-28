@@ -1,23 +1,19 @@
 import pytest
 from linopy import LinearExpression
 
-from pypsa.statistics import (
-    get_bus_and_carrier,
-    get_bus_and_carrier_and_bus_carrier,
-    get_carrier_and_bus_carrier,
-    get_name_bus_and_carrier,
-)
+from pypsa.statistics import groupers
 
 TOLERANCE = 1e-2
 
 
 GROUPER_PARAMETERS = [
-    get_bus_and_carrier,
-    get_name_bus_and_carrier,
-    get_carrier_and_bus_carrier,
-    get_bus_and_carrier_and_bus_carrier,
+    groupers.carrier,
+    groupers["carrier"],
+    [groupers.bus, groupers.carrier],
+    ["name", "bus", "carrier"],
+    ["carrier", "bus_carrier"],
+    ["bus", "carrier", "bus_carrier"],
     False,
-    None,
 ]
 KWARGS_PARAMETERS = [
     {"at_port": True},
@@ -44,6 +40,19 @@ def test_expressions_capacity(prepared_network, groupby):
     expr = n.optimize.expressions.capacity(groupby=groupby)
     assert isinstance(expr, LinearExpression)
     assert expr.size > 0
+
+
+@pytest.mark.parametrize("aggregate_across_components", (True, False))
+def test_expression_capacity_all_filtered(
+    prepared_network, aggregate_across_components
+):
+    n = prepared_network
+    expr = n.optimize.expressions.capacity(
+        bus_carrier="non-existent",
+        aggregate_across_components=aggregate_across_components,
+    )
+    assert isinstance(expr, LinearExpression)
+    assert expr.size == 0
 
 
 @pytest.mark.parametrize(
