@@ -7,14 +7,64 @@ Upcoming Release
 
 .. warning:: 
   
-  The features listed below are not released yet, but will be part of the next release! 
-  To use the features already you have to install the ``master`` branch, e.g. 
-  ``pip install git+https://github.com/pypsa/pypsa``.
+   The features listed below are not released yet, but will be part of the next release! 
+   To use the features already you have to install the ``master`` branch, e.g. 
+   ``pip install git+https://github.com/pypsa/pypsa``.
 
 Features
 --------
 
-* New component class structure (https://github.com/PyPSA/PyPSA/pull/1075)
+* New supported file formats for import and export: Excel
+
+  * Use :meth:`n.import_from_excel <pypsa.io.import_from_excel>` and 
+    :meth:`n.export_to_excel <pypsa.io.export_to_excel>` to import and export Networks
+    from and to Excel files.
+     
+  * `openpyxl` and `python-calamine` are required dependencies for this feature, but
+    different engines can be passed. By default they are not installed, but can be
+    installed via ``pip install pypsa[excel]``.
+
+
+* All statistics functions now interpret the bus_carrier argument as a regular 
+  expression (regex), enabling more flexible filtering options. 
+  (https://github.com/PyPSA/PyPSA/pull/1155)
+
+`v0.33.1 <https://github.com/PyPSA/PyPSA/releases/tag/v0.33.0>`__ (3rd March 2025)
+=======================================================================================
+
+
+Minor improvements
+------------------
+
+* Added a ``quotechar`` parameter to :func:`io.import_from_csv_folder` and
+  :func:`io.export_to_csv_folder` to handle non-standard field quoting in CSV
+  import/export, aligning with :func:`pandas.read_csv` and
+  :func:`pandas.to_csv`. (https://github.com/PyPSA/PyPSA/pull/1143)
+
+Bug fixes
+---------
+
+* `pypsa[cloudpath]` optional dependency will now only install `cloudpathlib` without 
+  extra cloud storage provider client libraries, these will be left to the user to 
+  install. (https://github.com/PyPSA/PyPSA/pull/1139)
+
+* :func:`import_from_netcdf` and :func:`import_from_hdf5` now work when a URI is
+  passed as a string instead of a CloudPath object.
+  (https://github.com/PyPSA/PyPSA/pull/1139)
+
+* Linearized unit commitment with equal startup and shutdown costs.
+  (https://github.com/PyPSA/PyPSA/pull/1157)
+
+* Fix pandas dtype warning. (https://github.com/PyPSA/PyPSA/pull/1151)
+
+`v0.33.0 <https://github.com/PyPSA/PyPSA/releases/tag/v0.33.0>`__ (7th February 2025)
+=======================================================================================
+
+Features
+--------
+
+* New component class structure 
+  (https://github.com/PyPSA/PyPSA/pull/1075, https://github.com/PyPSA/PyPSA/pull/1130)
 
   * Major structural refactoring of how component data is stored and accessed. The new 
     structure adds an extra layer to move all component-specific data from the network 
@@ -22,24 +72,80 @@ Features
 
   * This is an experimental feature, will be developed further and is not yet 
     recommended for general use. More features, documentation and examples will 
-    follow. Most users will not notice any changes. If you wanna play around with
-    it, you could do so for example via: ``c = n.components.generators``.
+    follow. Most users will not notice any changes.
+
+  * The new additional layer makes it easy to add new features. If you wanna play around
+    with the new components class, see the 
+    `Components class example <https://pypsa.readthedocs.io/en/latest/examples/experimental-components-class.html>`_ 
+    in the documentation. You will find an short introduction and some simple examples 
+    to show which other features could be added in the future. If you have any ideas, 
+    wishes, feedback or suggestions, please let us know via the 
+    `issue tracker <https://www.github.com/PyPSA/PyPSA/issues>`_.
+
+* Breaking: Deprecation of custom components (https://github.com/PyPSA/PyPSA/pull/1130)
+
+  * This version of PyPSA deprecates custom components. While we don't see many use 
+    cases for them, they might be added in an improved way in future again. For a 
+    potential reimplementation we would be happy to hear your use case and 
+    requirements via the `issue tracker <https://www.github.com/PyPSA/PyPSA/issues>`_.
   
-  * While the changes try to maintain full backwards compatibility, there may be some 
-    breaking changes or bugs, especially if you use custom components or custom 
-    component attributes in your network attributes in your network. 
-  
-  * Please report any issues and bugs you might encounter
-    via the `issue tracker <https://github.com/PyPSA/PyPSA/issues/new>`__ on 
-    GitHub.
+  * If you don't know what this is or have never used the ``override_components``
+    and ``override_component_attrs`` arguments during Network initialisation, you can
+    safely ignore this deprecation.
+
+* Breaking: Behavior of ``n.components``
+
+  * Iterating over `n.components` now yields the values instead of keys. Use 
+    `n.components.keys()` to keep iterating over keys.
+
+  * Checking if a component is in `n.components` using the 'in' operator is deprecated. 
+    With the deprecation of custom components keys in `n.components` also ever change.
+            
+* PyPSA `0.33` provides support for the recent Python 3.13 release and drops support 
+  for Python 3.9. While Python 3.9 still gets security updates until October 2025,
+  core dependencies of PyPSA are dropping support for Python 3.9 (e.g. `numpy`) and
+  active support is only provided for the most recent versions 
+  (see `endoflife.date <https://endoflife.date/python>`_). It is recommended to upgrade 
+  to the latest Python version if possible. Note that there might be some issues with
+  Windows and Python 3.13, which are not yet resolved. 
+  (https://github.com/PyPSA/PyPSA/pull/1099)
+
+* Added PyPSA options architecture via :meth:`pypsa.get_option`, :meth:`pypsa.set_option`, 
+  :meth:`pypsa.describe_options` and :meth:`pypsa.option_context`.
+  This allows to set and get global options for PyPSA and
+  mimics the options setting behavior of pandas. Currently there are not many options
+  available, but this will be extended in future. 
+  (https://github.com/PyPSA/PyPSA/pull/1134)
 
 * New network attributes :meth:`n.timesteps <pypsa.networks.Network.timesteps>`, 
   :meth:`n.periods <pypsa.networks.Network.periods>` and 
   :meth:`n.has_periods <pypsa.networks.Network.has_periods>` to simplified level access
   of the snapshots dimension. (https://github.com/PyPSA/PyPSA/pull/1113)
 
-* Consistency checks can now be run with the parameter ``strict``. If set to 
-  ``True``, the consistency check will raise an error if any of the checks fail.
+* Consistency checks can now be run with the parameter ``strict``, which will raise 
+  them as ``ConsistenyError``. Pass checks which should be strict in 
+  :meth:`n.consistency_check <pypsa.consistency.consistency_check>` as e.g.
+  ``strict=['unknown_buses']``. :meth:`n.optimize <pypsa.optimization.optimize.optimize>`
+  will run some strict checks by default now. (https://github.com/PyPSA/PyPSA/pull/1120, 
+  https://github.com/PyPSA/PyPSA/pull/1112)
+
+* New example in the documentation showing how to implement reserve power constraints.
+  (https://github.com/PyPSA/PyPSA/pull/1133)
+
+* Doctests are now run with the unit tests. They allow to test the documentation 
+  examples, which will improve the quality of docstrings and documentation in future 
+  releases. (https://github.com/PyPSA/PyPSA/pull/1114)
+  
+Bug fixes
+---------
+
+* The parameter threshold in function get_strong_meshed_buses was not considered
+  in the function it self. A kwargs check has been added for providing a own threshold.
+  E.g., get_strongly_meshed_buses (network, threshold=10)
+
+
+`v0.32.1 <https://github.com/PyPSA/PyPSA/releases/tag/v0.32.1>`__ (23th Januarary 2025)
+=======================================================================================
 
 Bug fixes
 ---------
@@ -47,6 +153,10 @@ Bug fixes
 * The expression module now correctly includes the "Load" component in the
   energy balance calculation. Before the fix, the "Load" component was not
   considered. (https://github.com/PyPSA/PyPSA/pull/1110)
+
+* The optimize/expression module now correctly assigns contributions from branch 
+  components in the `withdrawal` and `supply` functions. Before, there was a wrong 
+  multiplication by -1 for branch components. (https://github.com/PyPSA/PyPSA/pull/1123)
 
 `v0.32.0 <https://github.com/PyPSA/PyPSA/releases/tag/v0.32.0>`__ (5th December 2024)
 =======================================================================================
@@ -2173,4 +2283,3 @@ Release process
   `zenodo <https://zenodo.org/>`_ to archive the release with its own DOI.
 * To update to conda-forge, check the pull request generated at the `feedstock repository
   <https://github.com/conda-forge/pypsa-feedstock>`_.
-* Inform the PyPSA mailing list.

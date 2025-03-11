@@ -19,6 +19,7 @@ from scipy.sparse import hstack as shstack
 from scipy.sparse import vstack as svstack
 from scipy.sparse.linalg import spsolve
 
+from pypsa.common import as_index, deprecated_common_kwargs
 from pypsa.definitions.structures import Dict
 from pypsa.descriptors import (
     additional_linkports,
@@ -27,7 +28,6 @@ from pypsa.descriptors import (
     zsum,
 )
 from pypsa.descriptors import get_switchable_as_dense as get_as_dense
-from pypsa.utils import as_index, deprecated_common_kwargs
 
 if TYPE_CHECKING:
     from components import Network, SubNetwork
@@ -465,7 +465,7 @@ def sub_network_pf(
     remaining error, and convergence status for each snapshot
     """
 
-    if not isinstance(slack_weights, (str, pd.Series, dict)):
+    if not isinstance(slack_weights, (str | pd.Series | dict)):
         msg = (
             f"Type of 'slack_weights' must be string, pd.Series or dict. Got "
             f"{type(slack_weights)}."
@@ -861,10 +861,7 @@ def apply_line_types(n: Network) -> None:
         n.lines.loc[lines_with_types_b, "type"].unique()
     ).difference(n.line_types.index)
     if not missing_types.empty:
-        msg = (
-            f'The type(s) {", ".join(missing_types)} do(es) not exist in '
-            f"n.line_types"
-        )
+        msg = f"The type(s) {', '.join(missing_types)} do(es) not exist in n.line_types"
         raise ValueError(msg)
 
     # Get a copy of the lines data
@@ -905,7 +902,7 @@ def apply_transformer_types(n: Network) -> None:
     ).difference(n.transformer_types.index)
     if not missing_types.empty:
         msg = (
-            f'The type(s) {", ".join(missing_types)} do(es) not exist in '
+            f"The type(s) {', '.join(missing_types)} do(es) not exist in "
             f"n.transformer_types"
         )
         raise ValueError(msg)
@@ -938,8 +935,10 @@ def apply_transformer_types(n: Network) -> None:
     )
 
     # now set calculated values on live transformers
-    for attr in ["r", "x", "g", "b", "phase_shift", "s_nom", "tap_side", "tap_ratio"]:
-        n.transformers.loc[trafos_with_types_b, attr] = t[attr]
+    attrs = ["r", "x", "g", "b", "phase_shift", "s_nom", "tap_side", "tap_ratio"]
+    n.transformers.loc[trafos_with_types_b, attrs] = t[attrs].astype(
+        n.transformers[attrs].dtypes
+    )
 
     # TODO: status, rate_A
 

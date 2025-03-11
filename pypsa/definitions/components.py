@@ -2,19 +2,44 @@ from __future__ import annotations
 
 import logging
 import re
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
 from deprecation import deprecated
 
+from pypsa._options import get_option
 from pypsa.deprecations import COMPONENT_ALIAS_DICT
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class ComponentTypeInfo:
+class ComponentType:
+    """
+    Dataclass for network component type.
+
+    Contains all information about a component type, such as its name and defaults
+    attributes. Two different types are for example 'Generator' and 'Carrier'.
+
+    Attributes
+    ----------
+    name : str
+        Name of component type, e.g. 'Generator'.
+    list_name : str
+        Name of component type in list form, e.g. 'generators'.
+    description : str
+        Description of the component type.
+    category : str
+        Category of the component type, e.g. 'passive_branch'.
+    defaults : pd.DataFrame
+        Default values for the component type.
+    standard_types : pd.DataFrame | None
+        Standard types for the component type.
+
+    """
+
     name: str
     list_name: str
     description: str
@@ -23,7 +48,7 @@ class ComponentTypeInfo:
     standard_types: pd.DataFrame | None = None
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ComponentTypeInfo):
+        if not isinstance(other, ComponentType):
             return NotImplemented
 
         return (
@@ -35,7 +60,7 @@ class ComponentTypeInfo:
         )
 
     def __repr__(self) -> str:
-        return self.name + " Component Type"
+        return f"'{self.name}' Component Type"
 
     @property
     @deprecated(
@@ -56,13 +81,13 @@ class ComponentTypeInfo:
 
 class ComponentsStore(dict):
     def __repr__(self) -> str:
-        return "PyPSA Components Store \n====================== \n- " + "\n- ".join(
+        return "PyPSA Components Store\n======================\n- " + "\n- ".join(
             str(value) for value in self.values()
         )
 
     def __setattr__(self, name: str, value: Any) -> None:
         if hasattr(ComponentsStore, name):
-            msg = "'ComponentsStore' object attribute " f"'{name}' can not be set."
+            msg = f"'ComponentsStore' object attribute '{name}' can not be set."
             raise AttributeError(msg)
         self[name] = value
 
@@ -74,16 +99,33 @@ class ComponentsStore(dict):
 
         Examples
         --------
-        >>> components = ComponentsStore()
-        >>> components["generator"] = Generators()
-        >>> components["stores"] = Stores()
-        >>> components["generator"]
-        'Generator class instance'
-        >>> components[["generator", "stores"]]
-        >>> components[["generator", "stores"]]
-        ['Generator class instance', 'Stores class instance']
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components
+        PyPSA Components Store
+        ======================
+        - 0 'SubNetwork' Components
+        - 9 'Bus' Components
+        - 3 'Carrier' Components
+        - 1 'GlobalConstraint' Components
+        - 7 'Line' Components
+        - 36 'LineType' Components
+        - 0 'Transformer' Components
+        - 14 'TransformerType' Components
+        - 4 'Link' Components
+        - 6 'Load' Components
+        - 6 'Generator' Components
+        - 0 'StorageUnit' Components
+        - 0 'Store' Components
+        - 0 'ShuntImpedance' Components
+        - 0 'Shape' Components
+        >>> n.components["generators"]
+        PyPSA 'Generator' Components
+        ----------------------------
+        Attached to PyPSA Network 'AC-DC'
+        Components: 6
         """
-        if isinstance(item, (list, set)):
+        if isinstance(item, (list | set)):
             return [self[key] for key in item]
         else:
             if item in COMPONENT_ALIAS_DICT:
@@ -104,9 +146,13 @@ class ComponentsStore(dict):
 
         Examples
         --------
-        >>> components = ComponentsStore()
-        >>> components["generator"] = Generators()
-        >>> components.generators
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators
+        PyPSA 'Generator' Components
+        ----------------------------
+        Attached to PyPSA Network 'AC-DC'
+        Components: 6
         """
         try:
             return self[item]
@@ -136,4 +182,26 @@ class ComponentsStore(dict):
         """
         Value iterator over components in store.
         """
+        if get_option("warnings.components_store_iter"):
+            warnings.warn(
+                "Iterating over `n.components` yields the values instead of keys from "
+                "v0.33.0. This behavior might be breaking. Use `n.components.keys()` "
+                "to iterate over the keys. To suppress this warning set "
+                "`pypsa.options.warnings.components_store_iter = False`.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         return iter(self.values())
+
+    def __contains__(self, item: Any) -> bool:
+        """
+        Check if component is in store.
+        """
+        msg = (
+            "Checking if a component is in `n.components` using the 'in' operator "
+            "is deprecated. Use `item in n.components.keys()` to retain the old "
+            "behavior. But with v0.33.0 custom components are deprecated and "
+            "therefore keys in `n.components` never change. Check the release "
+            "notes for more information."
+        )
+        raise DeprecationWarning(msg)

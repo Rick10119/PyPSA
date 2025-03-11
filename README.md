@@ -13,7 +13,6 @@
 [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.3946412.svg)](https://doi.org/10.5281/zenodo.3946412)
 [![Discord](https://img.shields.io/discord/911692131440148490?logo=discord)](https://discord.gg/AnuJBk23FU)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
-[![Stack Exchange questions](https://img.shields.io/stackexchange/stackoverflow/t/pypsa)](https://stackoverflow.com/questions/tagged/pypsa)
 
 PyPSA stands for "Python for Power System Analysis". It is pronounced
 "pipes-ah".
@@ -142,7 +141,7 @@ for 2015.
 
 ## Dependencies
 
-PyPSA is written and tested to be compatible with Python 3.9 and above.
+PyPSA is written and tested to be compatible with Python 3.10 and above.
 The last release supporting Python 2.7 was PyPSA 0.15.0.
 
 It leans heavily on the following Python packages:
@@ -175,9 +174,7 @@ the preferred solver. You can use e.g. one of the free solvers
 
 We strongly welcome anyone interested in contributing to this project. If you have any ideas, suggestions or encounter problems, feel invited to file issues or make pull requests on GitHub.
 
--   In case of code-related **questions**, please post on [stack overflow](https://stackoverflow.com/questions/tagged/pypsa).
--   For non-programming related and more general questions please refer to the [mailing list](https://groups.google.com/group/pypsa).
--   To **discuss** with other PyPSA users, organise projects, share news, and get in touch with the community you can use the [discord server](https://discord.gg/AnuJBk23FU).
+-   To **discuss** with other PyPSA users, organise projects, share news, and get in touch with the community you can use the [Discord server](https://discord.gg/AnuJBk23FU).
 -   For **bugs and feature requests**, please use the [PyPSA Github Issues page](https://github.com/PyPSA/PyPSA/issues).
 -   For **troubleshooting**, please check the [troubleshooting](https://pypsa.readthedocs.io/en/latest/troubleshooting.html) in the documentation.
 
@@ -227,7 +224,7 @@ or from the overall PyPSA Zenodo DOI for Versions up to 0.17.0:
 
 # Licence
 
-Copyright 2015-2024 [PyPSA
+Copyright 2015-2025 [PyPSA
 Developers](https://pypsa.readthedocs.io/en/latest/developers.html)
 
 PyPSA is licensed under the open source [MIT

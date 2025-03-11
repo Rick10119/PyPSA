@@ -1,26 +1,28 @@
 """
 Abstract components module.
 
-Contains classes and logic relevant to all component types in PyPSA.
+Contains classes and properties relevant to all component types in PyPSA. Also imports
+logic from other modules:
+- components.types
 """
 
 from __future__ import annotations
 
 import logging
 from abc import ABC
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 from pyproj import CRS
 
+from pypsa.common import equals
+from pypsa.components.descriptors import get_active_assets
 from pypsa.constants import DEFAULT_EPSG, DEFAULT_TIMESTAMP
-from pypsa.definitions.components import ComponentTypeInfo
+from pypsa.definitions.components import ComponentType
 from pypsa.definitions.structures import Dict
-from pypsa.utils import equals
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +42,20 @@ class ComponentsData:
     Dataclass to store all data of a Components object and used to separate data from
     logic.
 
+    Attributes
+    ----------
+    ctype : ComponentType
+        Component type information containing all default values and attributes.
+    n : Network | None
+        Network object to which the component might be attached.
+    static : pd.DataFrame
+        Static data of components.
+    dynamic : dict
+        Dynamic data of components.
+
     """
 
-    ct: ComponentTypeInfo
+    ctype: ComponentType
     n: Network | None
     static: pd.DataFrame
     dynamic: dict
@@ -65,9 +78,15 @@ class Components(ComponentsData, ABC):
 
     """
 
+    # Methods
+    # -------
+
+    # from pypsa.components.descriptors
+    get_active_assets = get_active_assets
+
     def __init__(
         self,
-        ct: ComponentTypeInfo,
+        ctype: ComponentType,
         n: Network | None = None,
         names: str | int | Sequence[int | str] | None = None,
         suffix: str = "",
@@ -77,7 +96,7 @@ class Components(ComponentsData, ABC):
 
         Parameters
         ----------
-        ct : ComponentTypeInfo
+        ctype : ComponentType
             Component type information.
         n : Network, optional
             Network object to attach to, by default None.
@@ -96,10 +115,10 @@ class Components(ComponentsData, ABC):
                 "supported."
             )
             raise NotImplementedError(msg)
-        static, dynamic = self._get_data_containers(ct)
-        super().__init__(ct, n=None, static=static, dynamic=dynamic)
+        static, dynamic = self._get_data_containers(ctype)
+        super().__init__(ctype, n=None, static=static, dynamic=dynamic)
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """
         Get string representation of component.
 
@@ -107,6 +126,25 @@ class Components(ComponentsData, ABC):
         -------
         str
             String representation of component.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> str(n.components.generators)
+        "PyPSA 'Generator' Components"
+
+        """
+        return f"PyPSA '{self.ctype.name}' Components"
+
+    def __repr__(self) -> str:
+        """
+        Get representation of component.
+
+        Returns
+        -------
+        str
+            Representation of component.
 
         Examples
         --------
@@ -121,38 +159,15 @@ class Components(ComponentsData, ABC):
         """
         num_components = len(self.static)
         if not num_components:
-            return f"Empty PyPSA {self.ct.name} Components\n"
-        text = f"PyPSA '{self.ct.name}' Components"
-        text += "\n" + "-" * len(text) + "\n"
+            return f"Empty {self}"
+        text = f"{self}\n" + "-" * len(str(self)) + "\n"
 
         # Add attachment status
         if self.attached:
-            network_name = f"'{self.n_save.name}'" if self.n_save.name else ""
-            text += f"Attached to PyPSA Network {network_name}\n"
+            text += f"Attached to {str(self.n)}\n"
 
         text += f"Components: {len(self.static)}"
 
-        return text
-
-    def __str__(self) -> str:
-        """
-        Get string representation of component.
-
-        Returns
-        -------
-        str
-            String representation of component.
-
-        Examples
-        --------
-        >>> import pypsa
-        >>> c = pypsa.examples.ac_dc_meshed().components.generators
-        >>> print(c)
-        6 'Generator' Components
-
-        """
-        num_components = len(self.static)
-        text = f"{num_components} '{self.ct.name}' Components"
         return text
 
     def __getitem__(self, key: str) -> Any:
@@ -214,13 +229,13 @@ class Components(ComponentsData, ABC):
 
         """
         return (
-            equals(self.ct, other.ct)
+            equals(self.ctype, other.ctype)
             and equals(self.static, other.static)
             and equals(self.dynamic, other.dynamic)
         )
 
     @staticmethod
-    def _get_data_containers(ct: ComponentTypeInfo) -> tuple[pd.DataFrame, Dict]:
+    def _get_data_containers(ct: ComponentType) -> tuple[pd.DataFrame, Dict]:
         static_dtypes = ct.defaults.loc[ct.defaults.static, "dtype"].drop(["name"])
         if ct.name == "Shape":
             crs = CRS.from_epsg(
@@ -258,7 +273,7 @@ class Components(ComponentsData, ABC):
         Get standard types of component.
 
         It is an alias for the `standard_types` attribute of the underlying
-        :class:`pypsa.definitions.ComponentTypeInfo`.
+        :class:`pypsa.definitions.ComponentType`.
 
         Returns
         -------
@@ -266,82 +281,116 @@ class Components(ComponentsData, ABC):
             DataFrame with standard types of component.
 
         """
-        return self.ct.standard_types
+        return self.ctype.standard_types
 
     @property
     def name(self) -> str:
         """
-        Get name of component.
-
-        It is an alias for the `name` attribute of the underlying
-        :class:`pypsa.definitions.ComponentTypeInfo`.
+        Name of component type.
 
         Returns
         -------
         str
             Name of component.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators.name
+        'Generator'
+
         """
-        return self.ct.name
+        return self.ctype.name
 
     @property
     def list_name(self) -> str:
         """
-        Get list name of component.
-
-        E.g. 'generators' or 'lines', for the corresponding 'Generator' or 'Line'
-        component. It is an alias for the `list_name` attribute of the underlying
-        :class:`pypsa.definitions.ComponentTypeInfo`.
+        List name of component type.
 
         Returns
-        -------
-        return self.ct.list_name
         -------
         str
             List name of component.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators.list_name
+        'generators'
+
         """
-        return self.ct.list_name
+        return self.ctype.list_name
 
     @property
     def description(self) -> str:
         """
-        Get description of component.
-
-        It is an alias for the `description` attribute of the underlying
-        :class:`pypsa.definitions.ComponentTypeInfo`.
+        Description of component.
 
         Returns
         -------
         str
             Description of component.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators.description
+        'Power generator.'
+
         """
-        return self.ct.description
+        return self.ctype.description
 
     @property
     def category(self) -> str:
         """
-        Get category of component.
-
-        E.g. 'controllable_one_port'. It is an alias for the `category` attribute of
-        the underlying :class:`pypsa.definitions.ComponentTypeInfo`.
+        Category of component.
 
         Returns
         -------
         str
             Category of component.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators.category
+        'controllable_one_port'
+
         """
-        return self.ct.category
+        return self.ctype.category
 
     @property
     def type(self) -> str:
         """
         Get category of component.
-
-        E.g. 'controllable_one_port'. It is an alias for the `category` attribute of
-        the underlying :class:`pypsa.definitions.ComponentTypeInfo`.
 
         .. note ::
             While not actively deprecated yet, :meth:`category` is the preferred method
@@ -352,16 +401,19 @@ class Components(ComponentsData, ABC):
         str
             Category of component.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
         """
-        return self.ct.category
+        return self.ctype.category
 
     @property
     def attrs(self) -> pd.DataFrame:
         """
-        Get default values of corresponding component type.
-
-        It is an alias for the `defaults` attribute of the underlying
-        :class:`pypsa.definitions.ComponentTypeInfo`.
+        Default values of corresponding component type.
 
         .. note::
             While not actively deprecated yet, :meth:`defaults` is the preferred method
@@ -373,16 +425,24 @@ class Components(ComponentsData, ABC):
             DataFrame with component attribute names as index and the information
             like type, unit, default value and description as columns.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
+
         """
-        return self.ct.defaults
+        return self.ctype.defaults
 
     @property
     def defaults(self) -> pd.DataFrame:
         """
-        Get default values of corresponding component type.
+        Default values of corresponding component type.
 
-        It is an alias for the `defaults` attribute of the underlying
-        :class:`pypsa.definitions.ComponentTypeInfo`.
+        .. note::
+            While not actively deprecated yet, :meth:`defaults` is the preferred method
+            to access component attributes.
 
         Returns
         -------
@@ -390,8 +450,27 @@ class Components(ComponentsData, ABC):
             DataFrame with component attribute names as index and the information
             like type, unit, default value and description as columns.
 
+        See Also
+        --------
+        pypsa.definitions.ComponentType :
+            This property directly references the same property in the
+            associated underlying class.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators.defaults.head() # doctest: +SKIP
+                     type unit default                                        description            status  static  varying              typ    dtype
+        attribute
+        name       string  NaN                                                Unique name  Input (required)    True    False    <class 'str'>   object
+        bus        string  NaN                 name of bus to which generator is attached  Input (required)    True    False    <class 'str'>   object
+        control    string  NaN      PQ  P,Q,V control strategy for PF, must be "PQ", "...  Input (optional)    True    False    <class 'str'>   object
+        type       string  NaN          Placeholder for generator type. Not yet implem...  Input (optional)    True    False    <class 'str'>   object
+        p_nom       float   MW     0.0          Nominal power for limits in optimization.  Input (optional)    True    False  <class 'float'>  float64
+
         """
-        return self.ct.defaults
+        return self.ctype.defaults
 
     def get(self, attribute_name: str, default: Any = None) -> Any:
         """
@@ -426,6 +505,13 @@ class Components(ComponentsData, ABC):
         -------
         bool
             True if component is attached to a Network, otherwise False.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> n = pypsa.examples.ac_dc_meshed()
+        >>> n.components.generators.attached
+        True
 
         """
         return self.n is not None
@@ -473,46 +559,146 @@ class Components(ComponentsData, ABC):
         """
         return self.dynamic
 
-    def get_active_assets(
-        self,
-        investment_period: int | str | Sequence | None = None,
-    ) -> pd.Series:
+    @property
+    def units(self) -> pd.Series:
         """
-        Get active components mask of componen type in investment period(s).
-
-        A component is considered active when:
-        - it's active attribute is True
-        - it's build year + lifetime is smaller than the investment period (if given)
-
-        Parameters
-        ----------
-        investment_period : int, str, Sequence
-            Investment period(s) to check for active within build year and lifetime. If
-            none only the active attribute is considered and build year and lifetime are
-            ignored. If multiple periods are given the mask is True if component is
-            active in any of the given periods.
+        Get units of all attributes of components.
 
         Returns
         -------
         pd.Series
-            Boolean mask for active components
+            Series with attribute names as index and units as values.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> c = pypsa.examples.ac_dc_meshed().components.generators
+        >>> c.units.head() # doctest: +SKIP
+                       unit
+        attribute
+        p_nom            MW
+        p_nom_mod        MW
+        p_nom_min        MW
+        p_nom_max        MW
+        p_min_pu   per unit
 
         """
-        if investment_period is None:
-            return self.static.active
-        if not {"build_year", "lifetime"}.issubset(self.static):
-            return self.static.active
+        return self.defaults.unit[self.defaults.unit.notnull()].to_frame()
 
-        # Logical OR of active assets in all investment periods and
-        # logical AND with active attribute
-        active = {}
-        for period in np.atleast_1d(investment_period):
-            if period not in self.n_save.investment_periods:
-                raise ValueError("Investment period not in `n.investment_periods`")
-            active[period] = self.static.eval(
-                "build_year <= @period < build_year + lifetime"
-            )
-        return pd.DataFrame(active).any(axis=1) & self.static.active
+    @property
+    def ports(self) -> list:
+        """
+        Get ports of all components.
+
+        Returns
+        -------
+        pd.Series
+            Series with attribute names as index and port names as values.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> c = pypsa.examples.ac_dc_meshed().components.lines
+        >>> c.ports
+        ['0', '1']
+
+        """
+        return [str(col)[3:] for col in self.static if str(col).startswith("bus")]
+
+    @property
+    def nominal_attr(self) -> str:
+        """
+        Get nominal attribute of component.
+
+        Returns
+        -------
+        str
+            Name of the nominal attribute of the component.
+
+        Examples
+        --------
+        >>> import pypsa
+        >>> c = pypsa.examples.ac_dc_meshed().components.generators
+        >>> c.nominal_attr
+        'p_nom'
+
+        """
+        # TODO: move to Component Specific class
+        nominal_attr = {
+            "Generator": "p_nom",
+            "Line": "s_nom",
+            "Transformer": "s_nom",
+            "Link": "p_nom",
+            "Store": "e_nom",
+            "StorageUnit": "p_nom",
+        }
+        try:
+            return nominal_attr[self.ctype.name]
+        except KeyError:
+            msg = f"Component type '{self.ctype.name}' has no nominal attribute."
+            raise AttributeError(msg)
+
+    # TODO move
+    def rename_component_names(self, **kwargs: str) -> None:
+        """
+        Rename component names.
+
+        Rename components and also update all cross-references of the component in
+        the network.
+
+        Parameters
+        ----------
+        **kwargs
+            Mapping of old names to new names.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        Define some network
+        >>> import pypsa
+        >>> n = pypsa.Network()
+        >>> n.add("Bus", ["bus1"])
+        Index(['bus1'], dtype='object')
+        >>> n.add("Generator", ["gen1"], bus="bus1")
+        Index(['gen1'], dtype='object')
+        >>> c = n.c.buses
+
+        Now rename the bus
+
+        >>> c.rename_component_names(bus1="bus2")
+
+        Which updates the bus components
+
+        >>> c.static.index
+        Index(['bus2'], dtype='object', name='Bus')
+
+        and all references in the network
+
+        >>> n.generators.bus
+        Generator
+        gen1    bus2
+        Name: bus, dtype: object
+
+        """
+        if not all(isinstance(v, str) for v in kwargs.values()):
+            msg = "New names must be strings."
+            raise ValueError(msg)
+
+        # Rename component name definitions
+        self.static = self.static.rename(index=kwargs)
+        for k, v in self.dynamic.items():  # Modify in place
+            self.dynamic[k] = v.rename(columns=kwargs)
+
+        # Rename cross references in network (if attached to one)
+        if self.attached:
+            for c in self.n_save.components.values():
+                col_name = self.name.lower()  # TODO: Generalize
+                cols = [f"{col_name}{port}" for port in c.ports]
+                if cols and not c.static.empty:
+                    c.static[cols] = c.static[cols].replace(kwargs)
 
 
 class SubNetworkComponents:

@@ -7,15 +7,14 @@ Additional types can be added by the user.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from pypsa.definitions.components import ComponentTypeInfo
+from pypsa.common import list_as_string
+from pypsa.definitions.components import ComponentType
 from pypsa.deprecations import COMPONENT_ALIAS_DICT
-from pypsa.utils import list_as_string
 
 # TODO better path handeling, integrate custom components
 _components_path = Path(__file__).parent.parent / "data" / "components.csv"
@@ -83,7 +82,8 @@ def add_component_type(
     ...     defaults_df=defaults_df,
     ... )
     >>> # Check created component type
-    >>> pypsa.components.types.get("CustomComponent")
+    >>> pypsa.components.types.get("custom_components")
+    'CustomComponent' Component Type
 
     """
     if name in all_components:
@@ -126,7 +126,7 @@ def add_component_type(
         )
 
     # Initialize Component
-    all_components[list_name] = ComponentTypeInfo(
+    all_components[list_name] = ComponentType(
         name=name,
         list_name=list_name,
         description=description,
@@ -182,7 +182,7 @@ def _load_default_component_types(
         )
 
 
-def get(name: str) -> ComponentTypeInfo:
+def get(name: str) -> ComponentType:
     """
     Get component type instance from package wide component types library.
 
@@ -198,13 +198,14 @@ def get(name: str) -> ComponentTypeInfo:
 
     Returns
     -------
-    pypsa.components.types.ComponentTypeInfo
+    pypsa.components.types.ComponentType
         Component type instance.
 
     Examples
     --------
     >>> import pypsa
     >>> pypsa.components.types.get("Generator")
+    'Generator' Component Type
 
     """
     if name in COMPONENT_ALIAS_DICT:
@@ -216,35 +217,6 @@ def get(name: str) -> ComponentTypeInfo:
             f"Component type '{name}' not found. If you use a custom component, make "
             f"sure to have it added. Available types are: "
             f"{list_as_string(all_components)}."
-        )
-        raise ValueError(msg)
-
-
-def check_if_added(components: str | Sequence) -> None:
-    """
-    Check if components are registered package-wide.
-
-    Parameters
-    ----------
-    components : list of str
-        List of component type names.
-
-    Raises
-    ------
-    ValueError
-        If a component is not registered package-wide.
-
-    """
-    if np.isscalar(components):
-        components = [components]
-
-    # Make sure any custom components are registered package-wide
-    if not_registered := [
-        c_name for c_name in components if c_name not in all_components.keys()
-    ]:
-        msg = (
-            f"Network contains custom components which are not registered "
-            f"package-wide. Add them first: {not_registered}components_"
         )
         raise ValueError(msg)
 

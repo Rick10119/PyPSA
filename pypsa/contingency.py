@@ -13,8 +13,8 @@ import pandas as pd
 from numpy import r_
 from scipy.sparse import csr_matrix
 
+from pypsa.common import deprecated_common_kwargs
 from pypsa.pf import calculate_PTDF
-from pypsa.utils import deprecated_common_kwargs
 
 if TYPE_CHECKING:
     from pypsa import Network, SubNetwork
@@ -43,9 +43,7 @@ def calculate_BODF(sub_network: SubNetwork, skip_pre: bool = False) -> None:
     skip_pre : bool, default False
         Skip the preliminary step of computing the PTDF.
 
-    Examples
-    --------
-    >>> sub_network.caculate_BODF()
+
     """
     if not skip_pre:
         calculate_PTDF(sub_network)
@@ -90,9 +88,6 @@ def network_lpf_contingency(
     p0 : pandas.DataFrame
         num_passive_branch x num_branch_outages DataFrame of new power flows
 
-    Examples
-    --------
-    >>> n.lpf_contingency(snapshot, branch_outages)
     """
     if snapshots is None:
         snapshots = n.snapshots

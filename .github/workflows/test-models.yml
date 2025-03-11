@@ -1,16 +1,12 @@
-# SPDX-FileCopyrightText: : 2021-2024 The PyPSA-Eur Authors
-#
-# SPDX-License-Identifier: CC0-1.0
-
 name: Test models
 
 on:
   push:
     branches:
     - master
+    - release-branch-v*
   pull_request:
-    branches:
-    - master
+    branches: ['*']
   schedule:
   - cron: "0 5 * * *"
 
